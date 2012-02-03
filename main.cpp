@@ -13,7 +13,11 @@ using namespace std;
  * 
  */
 int main(int argc, char** argv) {
-
+    
     return 0;
+}
+
+processArguements(int argLength, char** argList){
+    
 }
 
