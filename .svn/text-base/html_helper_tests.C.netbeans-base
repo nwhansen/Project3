@@ -1,0 +1,61 @@
+#include "html_helper_tests.h"
+#include "html_helpers.h"
+
+#ifdef VS
+#define strcasecmp _stricmp
+#endif
+
+bool getFullURLTests()
+{
+	bool passed = true;
+
+	passed = (strcasecmp(html_helpers::getFullURL("http://www.google.com", "doesn't matter").c_str(), "http://www.google.com") == 0) && passed;
+	passed = (strcasecmp(html_helpers::getFullURL("gmail", "http://google.com/").c_str(), "http://www.google.com/gmail") == 0) && passed;
+	passed = (strcasecmp(html_helpers::getFullURL("gmail", "http://google.com").c_str(), "http://www.google.com/gmail") == 0) && passed;
+	passed = (strcasecmp(html_helpers::getFullURL("gmail", "http://google.com/index.php").c_str(), "http://www.google.com/gmail") == 0) && passed;
+	passed = (strcasecmp(html_helpers::getFullURL("../gmail", "http://google.com/docs?brad=sucks").c_str(), "http://www.google.com/docs/../gmail") == 0) && passed;
+	passed = (strcasecmp(html_helpers::getFullURL("../gmail", "http://google.com/docs/index.php?brad=sucks").c_str(), "http://www.google.com/docs/../gmail") == 0) && passed;
+	passed = (strcasecmp(html_helpers::getFullURL("../gmail", "http://google.com/docs/").c_str(), "http://www.google.com/docs/../gmail") == 0) && passed;
+
+	return passed;
+}
+
+bool isValidURLTests()
+{
+	bool passed = true;
+
+	passed = html_helpers::isValidURL("http://www.google.com") && passed;
+	passed = html_helpers::isValidURL("https://www.google.com") && passed;
+	passed = html_helpers::isValidURL("www.google.com") && passed;
+	passed = html_helpers::isValidURL("www.google.com/") && passed;
+	passed = html_helpers::isValidURL("www.google.com/?brad=sucks") && passed;
+	passed = html_helpers::isValidURL("www.google.com/brad/sucks") && passed;
+	passed = html_helpers::isValidURL("www.google.com/brad/sucks?really=yes") && passed;
+	passed = html_helpers::isValidURL("http://atr.eng.utah.edu/~eolson/cs4540/ps3/index.php/?urlsdlkj=sgjsrg?/fjjhfgjh&euyr=dkjf") && passed;
+	passed = !html_helpers::isValidURL("http://atr.eng.utah.edu/~eolson/cs4540/ps3/index.edo?urlsdlkj=sgjsrg?/fjjhfgjh&euyr=dkjf") && passed;
+	passed = html_helpers::isValidURL("sucks.fail") && passed;
+	passed = !html_helpers::isValidURL("www.google.com/sucks.fail") && passed;
+
+	return passed;
+}
+
+bool runAllHTMLHelperTests()
+{
+	bool returnVal = true;
+
+	if (!getFullURLTests())
+	{
+		printf("getFullURLTests failed\n");
+
+		returnVal = false;
+	}
+
+	if (!isValidURLTests())
+	{
+		printf("isValidURLTests failed\n");
+
+		returnVal = false;
+	}
+
+	return returnVal;
+}

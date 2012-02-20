@@ -25,6 +25,7 @@
                    kind="IMPORTANT_FILES_FOLDER">
       <itemPath>NBMakefile</itemPath>
     </logicalFolder>
+    <itemPath>README</itemPath>
   </logicalFolder>
   <projectmakefile>NBMakefile</projectmakefile>
   <confs>

@@ -1,0 +1,101 @@
+/*
+ * Created for CS 3505 Spring 2012
+ * Written by: Nate Anderson, Cody Foltz, Nathan Hansen, Eric Olson
+ * 
+ * Class for maintaining lists of already viewed pages and yet to view pages
+ * It is expected that a single thread will get a URL that needs to be crawled from this class
+ *   process that URL and notify this class of new URLs that need to be crawled
+ * This class will ensure that no duplicate URLs will ever be crawled
+ * This class will spawn new threads for processing URLs if it has more URLs available
+ *   (up to a predefined maximum thread count)
+ */
+
+#ifndef CRAWLER_H
+#define CRAWLER_H
+
+#include <string>
+#include <vector>
+#include <time.h>
+
+#include "HashMap.h"
+#include "queue.h"
+#include "dictionary.h"
+#include "program_options.h"
+#include "results_manager.h"
+#include "page_handler.h"
+#include "html_helpers.h"
+
+using namespace std;
+
+// Crawls starting URL collecting statistics about all URLs crawled
+//TODO: close method to send final data to Results Manager. 
+class crawler
+{
+public:
+
+	// Constructor.
+	// Sets the private member variables to the specified parameters
+	crawler(program_options * const options, dictionary * const theDictionary, results_manager * const theResultsManager);
+
+	// Default destructor
+	~crawler();
+
+	// Starts the crawler at the initial URL
+	void startCrawler();
+
+	// Adds the URLs contained in the linksToAdd parameter to the list of links to crawl if the URL is new (not already visited or queued)
+	void addLinks(vector<string> *linksToAdd, page_handler_args *args);
+
+	// Returns the number of URLs that have been crawled since this crawler was started
+	int getLinksCrawledCount();
+
+	// Returns the next URL that should be crawled
+	string* getNextLink();
+
+	// Notifies the crawler to finish crawling current URLs and not start any new ones
+	void stopCrawling();
+
+	// Gets a bool indicating if the crawler has been asked to stop crawling
+	bool getShouldStopCrawling();
+
+	// Gets whether or not the crawler has completed the assigned task
+	// This will only return true if one or more of the following conditions are true:
+	//		It was asked to stop (by calling stopCrawling) AND all pages currently being processed has finished
+	//		It has crawled the maximum number of pages as specified by the maxURLsToCrawlCount member variable
+	//		It has run out of pages to crawl
+	bool isDoneCrawling();
+
+	// The callback for the page handler object to invoke when it has completed processing a URL
+	static page_handler_args * pageHandlerCallback(void *obj, page_handler *pageHandler);
+
+private:
+
+	// The list of URLs that still need to be crawled
+	queue<string> queuedURLs;
+
+	// The list of URLs that have been crawled or waiting to be crawled (currently queued)
+	HashMap<int> crawledURLs;
+
+	// The number of URLs that have been crawled or in the process of being crawled
+	int crawledURLCount;
+
+	// A flag that signifies if the user has asked the crawler to stop
+	bool shouldStopCrawling;
+
+	// Maintains a count of the current number of page_handler threads running under this crawler
+	int runningThreadCount;
+
+	// A pointer to the program_options object that was constructed using the command line arguments
+	program_options * const myOptions;
+
+	// A pointer to the dictionary object to use for all pages processed by this crawler
+	dictionary * const myDictionary;
+
+	// A pointer to the results_manager object to use for all pages processed by this crawler
+	results_manager * const myResultsManager;
+
+	// The time in milliseconds since Jan 1, 1970 that the last link was served
+	time_t timeLinkLastServed;
+};
+
+#endif

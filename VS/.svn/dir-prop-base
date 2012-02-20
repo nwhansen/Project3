@@ -1,0 +1,12 @@
+K 10
+svn:ignore
+V 55
+Debug
+ipch
+*.sdf
+*.suo
+_ReSharper.ps3
+*.opensdf
+*.user
+
+END

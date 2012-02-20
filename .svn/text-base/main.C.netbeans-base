@@ -1,0 +1,182 @@
+/*
+* Created for CS 3505 Spring 2012
+* Written by: Nate Anderson, Cody Foltz, Nathan Hansen, Eric Olson
+* 
+* Main method of the ps3 assignment
+* Crawls any URL (extra feature set if the URL is amazon.com) and checks for misspelled words
+* Gathers statistics for each page crawled and outputs an HTML page of the results
+* If the page root page is amazon.com, it will gather product rating, review, and reviewer statistics
+* Other features may be added later
+*/
+
+// Include stuff here
+#include <cstdlib>
+#include <iostream>
+
+#include <signal.h>
+
+#ifdef VS
+#include <conio.h>
+#include <ctime>
+
+#include "curl/curl.h"
+#endif
+
+#include <string>
+
+using namespace std;
+
+#include "program_options.h"
+#include "dictionary.h"
+#include "results_manager.h"
+#include "crawler.h"
+#include "results_printer.h"
+
+#include "curl_tests.h"
+#include "html_helper_tests.h"
+
+bool hasUserRequestedToEndCrawling = false;
+
+// Time code taken from http://www.cplusplus.com/reference/clibrary/ctime/strftime/
+
+void getCurrentTime(char *buffer, int bufferLength) {
+#ifdef VS
+	time_t rawtime;
+
+	time(&rawtime);
+	struct tm timeinfo;
+	localtime_s(&timeinfo, &rawtime);
+
+	strftime(buffer, bufferLength, " at %I:%M.%S %p", &timeinfo);
+#else
+	//snprintf(buffer, bufferLength, "");
+#endif
+}
+
+void sigint_handler(int sig) {
+	hasUserRequestedToEndCrawling = true;
+}
+
+// Error codes:
+#define ERROR_CODE_NONE 0 // No error
+#define ERROR_CODE_INSUFFICIENT_COMMAND_LINE_ARGUMENTS 1 // Command line arguments didn't specify minimum required values
+
+// Main method of the ps3 assignment
+// Creates many helper objects to accomplish the task specified in the file header comment
+// Outputs the result of the crawling to the file specified in the argv parameter
+
+int main(int argc, char **argv) {
+	//Ok this really needs to be cleaned up! 
+	signal(SIGINT, sigint_handler);
+	//Tests
+	//runAllHTMLHelperTests();
+	//curl_amazon_product_page_test1();
+
+	program_options options(argc, argv);
+
+	if (!options.getHasInitialURLBeenSet() || !options.getHasDictionaryPathBeenSet() || !options.getHasOutputFilenameBeenSet()) {
+		// searchflag when command line argument formatting has been decided on, change this error message to say what those options are
+		printf("Error - You must specify the dictionary to use for spell checking, the starting URL, and an output filename");
+
+		exit(ERROR_CODE_INSUFFICIENT_COMMAND_LINE_ARGUMENTS);
+	}
+
+	char timeBuffer[128];
+
+	getCurrentTime(timeBuffer, 128);
+
+	printf("Started dictionary construction using the %s file%s\n", options.getDictionaryFilename().c_str(), timeBuffer);
+
+	// Construct the dictionary that will be used by all threads that crawl the pages
+	dictionary theDictionary(options.getDictionaryFilename());
+
+	getCurrentTime(timeBuffer, 128);
+
+	printf("Completed dictionary construction%s\n", timeBuffer);
+
+	// Construct the results manager object that will be used by all threads that crawl the pages
+	results_manager resultsManager;
+
+	// Construct the crawler
+	crawler theCrawler(&options, &theDictionary, &resultsManager);
+
+	getCurrentTime(timeBuffer, 128);
+
+	printf("Starting the crawler%s\n", timeBuffer);
+
+	// Start the crawler running
+	theCrawler.startCrawler();
+
+	if (options.getAllowUserToStopCrawler()) {
+#ifdef VS
+		printf("The crawler is running.  To interupt it at any time, press the ESCAPE key\n");
+#else
+		printf("The crawler is running.  To interupt it at any time, press the Ctrl+C key combination\n");
+#endif
+	}
+
+	// While the crawler is still running...
+	while (true) {
+		// If the user is allowed to stop the crawler...
+		if (options.getAllowUserToStopCrawler()) {
+#ifdef VS
+			// Check to see if the user wants to do that now
+			// This checks to see if a key press is waiting to be processed in the input buffer and if that key is the ESCAPE key
+			if (_kbhit() && _getch() == 27) {
+				// Flush the input buffer
+				while (_kbhit()) {
+					_getch();
+				}
+
+				// If so, tell the crawler to stop
+				// Note:  This does not stop the crawler.
+				//			It just tells it that we want it to stop when it has finished processing its current pages
+				hasUserRequestedToEndCrawling = true;
+			}
+#endif
+		}
+
+		if (hasUserRequestedToEndCrawling) {
+			hasUserRequestedToEndCrawling = false; // Set the flag to false to prevent continually asking it to stop
+
+			// By checking if the crawler has already been asked to stop, it prevents the message from displaying multiple times while it finishes processing its current pages
+			if (!theCrawler.getShouldStopCrawling()) {
+				printf("Stopping the crawler.  Please wait.\n");
+			}
+
+			theCrawler.stopCrawling();
+		}
+
+		// Check to see if the crawler is done
+		if (theCrawler.isDoneCrawling()) {
+			// If so, break out of the infinite while loop so the program can write out its stats and complete execution
+			break;
+		}
+	}
+
+	getCurrentTime(timeBuffer, 128);
+
+	printf("The crawler terminated%s\n", timeBuffer);
+
+	// Contruct ResultsPrinter
+	results_printer resultsPrinter(&options, &resultsManager);
+
+	// Print results
+	resultsPrinter.writeHtmlFile();
+
+	// Object destruction here
+
+#ifdef WAIT_FOR_KEY_HIT_TO_EXIT
+	printf("Program complete.  Press any key to exit.");
+
+#ifdef VS
+	// Create an infinite loop until any key has been pressed
+	while (!_kbhit()) {
+	}
+#else // VS
+	// searchflag need to know how to get user input on non-windows systems.  Unless conio.h is usable.
+#endif // VS
+#endif
+
+	return ERROR_CODE_NONE;
+}

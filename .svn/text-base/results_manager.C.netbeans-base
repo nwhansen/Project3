@@ -1,0 +1,104 @@
+/*
+ * Created for CS 3505 Spring 2012
+ * Written by: Nate Anderson, Cody Foltz, Nathan Hansen, Eric Olson
+ * 
+ * Implemenation of the results_manager class.
+ * For more information, see results_manager.h header comment
+ */
+
+#include "results_manager.h"
+
+// Default constructor
+results_manager::results_manager()
+{
+}
+
+// Destructor
+results_manager::~results_manager()
+{
+}
+
+void results_manager::submitPageStats(page_stats *stats)
+{
+	// TODO Make this threadsafe!!!!
+    /*
+	this->totalWordCount += stats->getTotalWordCount();
+	this->totalMispelledWordCount += stats->getTotalMisspelledWordCount();
+	this->totalImageCount += stats->getTotalImageCount();
+	this->totalKiloBytesOfPages += stats->getTotalKiloBytes();
+	this->totalLinkCount += stats->getTotalLinkCount();
+	this->totalInternalLinkCount += stats->getTotalInternalLinkCount();
+	this->totalExternalLinkCount += stats->getTotalExternalLinkCount();
+
+	if(stats->isAmazonProductPage())
+	{
+		this->totalAmazonProductPagesCount++;
+		this->toalAmazonProductRatings += stats->getProductRating();
+		this->totalAmazonRelatedProductsCount += stats->getRelatedProductCount();
+		this->totalAmazonReviewsCount += stats->getTotalReviewCount();
+	}
+        */
+}
+
+void results_manager::updateReviewers(vector<reviewer*> *listOfReviewers)
+{
+	// TODO Make this threadsafe!!!!
+        /*
+	reviewer * masterReview;
+	string ID;
+	for(unsigned int i = 0; i < listOfReviewers->size(); i++){
+		ID = listOfReviewers->at(i)->getID();
+		if(reviewers.contains( ID )){
+			masterReview = this->reviewers.GetValuePtr( ID );
+			masterReview->update( listOfReviewers->at(i) );
+		} else {
+			reviewers.put( ID, *(listOfReviewers->at(i)) );
+		}
+	}
+        */
+}
+
+void results_manager::updateCommenters(vector<commenter*> *commenters) // p2
+{
+	// TODO Make this threadsafe!!!!
+}
+
+
+/*** GETTERS ***/
+
+// General page data getters
+unsigned int results_manager::getTotalPagesCount(){return totalPagesCount;}
+unsigned int results_manager::getTotalLinkCount(){return totalLinkCount;}
+unsigned int results_manager::getTotalInternalLinkCount(){return totalInternalLinkCount;}
+unsigned int results_manager::getTotalExternalLinkCount(){return totalExternalLinkCount;}
+unsigned int results_manager::getTotalImageCount(){return totalImageCount;}
+unsigned long results_manager::getTotalWordCount(){return totalWordCount;}
+unsigned int results_manager::getTotalMispelledWordCount(){return totalMispelledWordCount;}
+unsigned int results_manager::getTotalKiloBytesOfPages(){return totalKiloBytesOfPages;}
+
+// Amazon page data getters
+unsigned int results_manager::getTotalAmazonProductPagesCount(){return totalAmazonProductPagesCount;}
+unsigned int results_manager::getTotalAmazonRelatedProductsCount(){return totalAmazonProductPagesCount;}
+unsigned int results_manager::getTotalAmazonReviewsCount(){return totalAmazonProductPagesCount;}
+
+// A number of get methods to extract interesting data ratios
+// searchflag should there be methods for these, or should it be up to the results printer
+// to decide how and what to compute based on the counts from above?
+double results_manager::getAverageLinksPerPage(){return totalLinkCount/totalPagesCount;} // links/pages
+double results_manager::getAverageInternalLinksPerPage(){return totalInternalLinkCount/totalPagesCount;} // intetnalinks/pages
+double results_manager::getAverageExternalLinksPerPage(){return totalExternalLinkCount/totalPagesCount;} // externalLinks/pages
+double results_manager::getAverageWordsPerImage(){return totalWordCount/totalImageCount;} // words/images
+double results_manager::getAverageWordsPerPage(){return totalWordCount/totalPagesCount;} // words/pages
+double results_manager::getAverageImagesPerPage(){return totalImageCount/totalPagesCount;} // images/pages
+double results_manager::getAverageMisspelledWordsPerPage(){return totalMispelledWordCount/totalPagesCount;} // misspelledWords/pages
+double results_manager::getAverageKilobytesPerPage(){return totalKiloBytesOfPages/totalPagesCount;} // kilobytes/pages
+double results_manager::getAverageLinksPerImage(){return totalLinkCount/totalImageCount;} // links/images
+double results_manager::getAverageLinksPerWord(){return totalLinkCount/totalWordCount;} // links/words
+double results_manager::getAverageWordsPerMisspelledWord(){return totalWordCount/totalMispelledWordCount;} // totalWords/misspelledWords
+double results_manager::getAverageInternalLinksPerExternalLink(){return totalInternalLinkCount/totalExternalLinkCount;} // internalLinks/externalLinks
+
+// A number of get methods to extract interesting data ratios from Amazon
+double results_manager::getAverageAmazonProductRating(){return toalAmazonProductRatings/totalAmazonProductPagesCount;}
+double results_manager::getAverageAmazonRelatedProductsPerProduct(){return totalAmazonRelatedProductsCount/totalAmazonProductPagesCount;}
+double results_manager::getAverageAmazonReviewsPerProduct(){return totalAmazonReviewsCount/totalAmazonProductPagesCount;}
+double results_manager::getAverageAmazonProductPagesPerNonProductPage(){return totalAmazonProductPagesCount/totalPagesCount;}

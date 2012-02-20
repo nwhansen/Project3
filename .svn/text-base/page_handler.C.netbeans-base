@@ -1,0 +1,228 @@
+#include "page_handler.h"
+#include "html_helpers.h"
+
+// Constructor which is given a crawler callback to invoke when complete
+
+page_handler::page_handler(void *obj, page_handler_args * (*crawlerCallback)(void *obj, page_handler* thePageHandler)) {
+	// Set the callback member variable to the specified callback
+	myCrawlerCallback = crawlerCallback;
+	this->callee = obj;
+}
+
+// Default destructor
+
+page_handler::~page_handler() {
+	// Since nothing was allocated, nothing needs to be freed
+}
+
+// Starts this page handler which will ask the crawler for a link to process,
+// process that link, return its results to the crawler and ask for another link.
+
+void page_handler::start(page_handler_args *args) {
+	myArgs = args;
+
+	//Ok we need to process the first page we get then loop forever until we stop getting pages.
+
+	process();
+
+	page_handler_args * newArgs = myCrawlerCallback(callee, this);
+
+	while (newArgs != NULL) {
+		this->myArgs = newArgs;
+		process();
+		newArgs = myCrawlerCallback(callee, this);
+	}
+}
+
+page_handler_args * page_handler::getArgs() {
+	return this->myArgs;
+}
+
+void page_handler::process() {
+	//Ok we need to download the page.
+	//Get an instance of curl
+	CURL *curl = 0; //Just cause
+	cout << "Processing" << endl;
+	CURLcode res;
+	std::stringstream buffer;
+	curl = curl_easy_init();
+	if (curl) {
+		//URL Encode the string as to not break anything.
+		string loc(curl_easy_escape(curl, this->myArgs->URL.c_str(), 0));
+		//Set download URL
+		string get = html_helpers::getDomParserServerURL(loc);
+		curl_easy_setopt(curl, CURLOPT_URL, get.c_str());
+		//Set our user agent, cause He wants us to.
+		curl_easy_setopt(curl, CURLOPT_USERAGENT, "cs3505_NullPointerExceptionBot");
+		//No progress bar, just in case
+		curl_easy_setopt(curl, CURLOPT_NOPROGRESS, 1);
+		// Set the callback function to send data to as "write_function" aka convert to stringstream
+		curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, this->write_data);
+		// Set the buffer to put temp data into as buffer this will allow for string conversion.
+		curl_easy_setopt(curl, CURLOPT_WRITEDATA, &buffer);
+		//Download that page! 
+		res = curl_easy_perform(curl);
+		if(res != 0){
+			cout << "I died" << endl;
+			cout << "Error found " << res << endl;
+		}
+		
+		// always cleanup
+		curl_easy_cleanup(curl);
+		//Get the results as a string.
+		string htmlPage = buffer.str();
+		//JSON TIME!
+		cJSON *root = cJSON_Parse(htmlPage.c_str());
+		if(cJSON_GetObjectItem(root, "Error") != 0){
+			//I think this is the error condition if we get a pointer to something
+			//searchflag would we like to track errors and log this?
+			this->myArgs->Success = false;
+
+			return;
+		}
+
+		/*
+			images
+			links
+			rawText
+			isAmazon
+			isReview
+			isProduct
+			ReviewDescription
+			ReviewerName
+			ProductReviewed
+		*/
+
+		cJSON *isAmazonNode = cJSON_GetObjectItem(root, "isAmazon");
+
+		cJSON *isProductReviewNode = NULL;
+		cJSON *imagesNode = cJSON_GetObjectItem(root, "images");
+		cJSON *linksNode = cJSON_GetObjectItem(root, "links");
+		cJSON *rawTextNode = cJSON_GetObjectItem(root, "rawText");
+		cJSON *reviewDescriptionNode = NULL;
+		cJSON *reviewerNameNode = NULL;
+		cJSON *productReviewedNode = NULL;
+		cJSON *pageSizeNode = cJSON_GetObjectItem(root, "somethinghere");
+
+		if (isAmazonNode == 0)
+		{
+			cout << "Error: isAmazonNode is null" << endl;
+		}
+
+		if (imagesNode == 0)
+		{
+			cout << "Error: imagesNode is null" << endl;
+		}
+
+		if (linksNode == 0)
+		{
+			cout << "Error: linksNode is null" << endl;
+		}
+
+		if (rawTextNode == 0)
+		{
+			cout << "Error: rawTextNode is null" << endl;
+		}
+
+		if (pageSizeNode == 0)
+		{
+			cout << "Error: pageSizeNode is null" << endl;
+		}
+
+		bool isAmazon = false;
+		bool isProductReview = false;
+
+		if (isAmazonNode != 0)
+		{
+			isAmazon = isAmazonNode->valueint == 1;
+
+			isProductReviewNode = cJSON_GetObjectItem(root, "isReview");
+
+			if (isProductReviewNode != 0)
+			{
+				isProductReview = isProductReviewNode->valueint == 1;
+
+				reviewDescriptionNode = cJSON_GetObjectItem(root, "reviewDescription");
+				reviewerNameNode = cJSON_GetObjectItem(root, "reviewerName");
+				productReviewedNode = cJSON_GetObjectItem(root, "productReviewed");
+			}
+		}
+
+		int imageCount = imagesNode->valueint;
+		//The hard part >.< the array of images.
+		//cout << "Found " << imageCount << " images";
+		myArgs->pageStats.setTotalImageCount(imageCount);
+
+		int totalLinkCount = cJSON_GetArraySize(linksNode);
+
+		myArgs->pageStats.setTotalLinkCount(totalLinkCount);
+
+		// searchflag set these values
+		myArgs->pageStats.setTotalKiloBytes(0);
+
+		string rawText(rawTextNode->valuestring);
+
+		//Ok time to extract the children... Yeah, I hate the lack of C++ Objects but it is so easy.
+		//cJSON *linksRoot = cJSON_GetObjectItem(root, "links");
+		//if we begin to run down like a mad man i guess.
+		//cout << "Found " << cJSON_GetArraySize(linksRoot) << " links" << endl;
+		string fullURL("");
+		for(int i = 0; i < totalLinkCount; i++){
+			fullURL = html_helpers::getFullURL(string(cJSON_GetArrayItem(linksNode,i)->valuestring), this->myArgs->URL);
+			this->myArgs->links.push_back(fullURL);
+			//cout << "Link to: " << fullURL << endl;
+		}
+
+		// send rawText to file reader
+		vector<string> *words = NULL;
+
+		int misspelledWordsCount = getMisspelledWordsCount(words, myDictionary);
+
+		delete words;
+
+		words = NULL;
+
+		myArgs->pageStats.setTotalWordCount(words->size());
+		myArgs->pageStats.setTotalMisspelledWordCount(misspelledWordsCount);
+
+		if (isProductReview)
+		{
+			// Use file reader to get words
+			words = NULL;
+
+			int misspelledReviewerWordsCount = getMisspelledWordsCount(words, myDictionary);
+
+			myArgs->productReviewer.update(misspelledReviewerWordsCount, words->size(), 0, 0);
+
+			delete words;
+
+			words = NULL;
+		}
+
+		if(reviewDescriptionNode != 0)
+		{
+			string reviewText(reviewDescriptionNode->valuestring);
+		}
+	}
+	else
+	{
+		this->myArgs->Success = false;
+	}
+}
+
+int page_handler::getMisspelledWordsCount(vector<string> *words, dictionary *theDictionary)
+{
+	int wordCount = words->size();
+
+	int misspelledWordCount = 0;
+
+	for (int i = 0; i < wordCount; i++)
+	{
+		if (!theDictionary->spelled_correctly(words->at(i)))
+		{
+			misspelledWordCount++;
+		}
+	}
+
+	return misspelledWordCount;
+}

@@ -1,0 +1,3 @@
+#include "page_stats.h"
+
+void page_stats::reset(){}

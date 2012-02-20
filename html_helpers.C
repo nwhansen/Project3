@@ -1,0 +1,293 @@
+/*
+ * Created for CS 3505 Spring 2012
+ * Written by: Nate Anderson, Cody Foltz, Nathan Hansen, Eric Olson
+ * 
+ * Implemenation of the html_helpers class.
+ * For more information, see results_manager.h header comment
+ */
+
+#include <string.h>
+
+using namespace std;
+
+#include "html_helpers.h"
+
+int html_helpers::graphIdUniqueTag = 0;
+
+#ifdef VS
+#define strcasecmp _stricmp
+#endif
+
+bool html_helpers::isValidURL(string URL) {
+	string whiteListFileExtentions[] = {"php", "html", "jsp", "asp", "aspx", "ascx", "htm"};
+
+	int whiteListFileExtentionsCount = sizeof(whiteListFileExtentions) / sizeof(whiteListFileExtentions[0]);
+
+	string workingURL = URL;
+
+	size_t questionIndex = workingURL.find_first_of("?");
+
+	if (questionIndex != string::npos)
+	{
+		workingURL = workingURL.substr(0, questionIndex);
+	}
+
+	string protocolSeparator("://");
+
+	size_t protocolIndex = workingURL.find(protocolSeparator);
+
+	if (protocolIndex != string::npos)
+	{
+		workingURL = workingURL.substr(protocolIndex + protocolSeparator.length());
+	}
+
+	size_t lastSlashIndex = workingURL.find_last_of("/");
+
+	if (lastSlashIndex == string::npos)
+	{
+		return true;
+	}
+	else if (lastSlashIndex != string::npos)
+	{
+		workingURL = workingURL.substr(lastSlashIndex + 1);
+	}
+
+	size_t lastDotIndex = workingURL.find_last_of(".");
+
+	if (lastDotIndex != string::npos)
+	{
+		workingURL = workingURL.substr(lastDotIndex + 1);
+
+		for (int i = 0; i < whiteListFileExtentionsCount; i++)
+		{
+			if (strcasecmp(workingURL.c_str(), whiteListFileExtentions[i].c_str()) == 0)
+			{
+				return true;
+			}
+		}
+
+		return false;
+	}
+
+	return true;
+}
+
+// Gets the site root of the specified URL
+// Param - URL - The URL to get the base of
+// Returns - The base URL of the specified URL
+string html_helpers::getBaseURL(string URL)
+{
+	string protocolSeparator("://");
+
+	size_t protocolIndex = URL.find(protocolSeparator);
+
+	if (protocolIndex != string::npos)
+	{
+		URL = URL.substr(protocolIndex + protocolSeparator.length());
+	}
+
+	size_t firstSlashIndex = URL.find_first_of("/");
+
+	if (firstSlashIndex != string::npos)
+	{
+		URL = URL.substr(0, firstSlashIndex);
+	}
+
+	return URL;
+}
+
+// Returns true if the specified URL is a relative URL path
+// Param - URL - The URL to determine relativity of
+// Returns - True if the specified URL is a relative URL path
+bool html_helpers::isRelativeURL(string URL)
+{
+	string protocolSeparator("://");
+
+	size_t protocolIndex = URL.find(protocolSeparator);
+
+	if (protocolIndex != string::npos)
+	{
+		return false;
+	}
+
+	return true;
+}
+
+// Returns true if both URLs have the same base URL
+// Param - URL1 - The first URL to compare
+// Param - URL2 - The second URL to compare
+// Returns - True if both URLs have the same base URL
+bool html_helpers::hasSameBaseURL(string URL1, string URL2)
+{
+	// Get the base URLs of the two URLs
+	string URL1Base = getBaseURL(URL1);
+	string URL2Base = getBaseURL(URL2);
+
+	// Return whether or not the base URLs are the same (ignoring case)
+	return (strcasecmp(URL1Base.c_str(), URL2Base.c_str()) == 0);
+}
+
+// Returns true if the first URL is within the domain of the second.
+// Subdomains are considered to be within the domain (i.g. sub.site.com is within site.com)
+// Param - subjectURL - The URL to test
+// Param - controlURL - The URL to test against
+// Returns - True if the first URL is within the domain of the second
+bool html_helpers::isWithinDomain(string subjectURL, string controlURL)
+{
+	// Get the base URLs of the two URLs
+	subjectURL = getBaseURL(subjectURL);
+	controlURL = getBaseURL(controlURL);
+
+	int subjectURLlength = subjectURL.length();
+	int controlURLlength = controlURL.length();
+
+	// site.com cannot in the domain of sub.site.com due to length alone
+	if(subjectURLlength < controlURLlength)
+	{
+		return false;
+	}
+
+	// start at the end of each URL and compare each char all the way to the beginning of the
+	// controlURL. They must match in this way as you can see:
+	//   sub.site.com (subjectURL) is within the domain
+	//       site.com (controlURL)
+	int difference = subjectURLlength - controlURLlength;
+	for(int i = controlURLlength - 1; i >= 0; i--)
+	{
+		if(subjectURL[i + difference] != controlURL[i])
+		{
+			return false;
+		}
+	}
+
+	return true;
+}
+
+// Removes all characters after the # in the URL (as long as the # isn't in the query string)
+string html_helpers::stripHashTag(string URL)
+{
+	int hashIndex = URL.find_first_of("#");
+
+	if (hashIndex != string::npos)
+	{
+		URL = URL.substr(0, hashIndex);
+	}
+
+	return URL;
+}
+
+// Returns the full URL of the potentially partial URL in reference to the relative URL
+string html_helpers::getFullURL(string relativeURL, string referenceURL)
+{
+	relativeURL = stripHashTag(relativeURL);
+
+	if (!isRelativeURL(relativeURL))
+	{
+		return relativeURL;
+	}
+
+	referenceURL = stripHashTag(referenceURL);
+
+	string protocol("");
+
+	string protocolSeparator("://");
+
+	size_t protocolIndex = referenceURL.find(protocolSeparator);
+
+	if (protocolIndex != string::npos)
+	{
+		protocol = referenceURL.substr(0, protocolIndex + protocolSeparator.length());
+		referenceURL = referenceURL.substr(protocolIndex + protocolSeparator.length());
+	}
+
+	size_t queryStringStartIndex = referenceURL.find("?");
+
+	if (queryStringStartIndex != string::npos)
+	{
+		referenceURL = referenceURL.substr(0, queryStringStartIndex);
+	}
+
+	// searchflag TODO: must be able to get this working! Had to stop short on finishing, but I
+	// will finish it. - Eric
+	// Find the first '/' of the relative URL. This is so that we can determine if a path is of
+	// the form "/path" which should be appended to the root of the reference URL, or "path/morepath"
+	// which should be appended directly to the end of the refernce URL
+	size_t firstSlashInRelativeURL = relativeURL.find_first_of('/');
+
+	if(firstSlashInRelativeURL != string::npos && firstSlashInRelativeURL == 0) // relative to base
+	{
+		referenceURL = getBaseURL(referenceURL);
+	}
+	else // not relative to base
+	{
+		size_t lastSlashIndex = referenceURL.find_last_of("/");
+		size_t lastDotIndex = referenceURL.find_last_of(".");
+
+		if (lastDotIndex != string::npos && lastDotIndex > lastSlashIndex)
+		{
+			referenceURL = referenceURL.substr(0, lastSlashIndex + 1);
+		}
+		else if (referenceURL.size() > 0 && referenceURL[referenceURL.size() - 1] != '/')
+		{
+			referenceURL = referenceURL + "/";
+		}
+	}
+
+	string result = protocol + referenceURL + relativeURL;
+
+	return result;
+}
+
+// Creates and returns the script and HTML necessary to generate a chart from the Google Charts API.
+// See the header file comments for more detailed information.
+string html_helpers::getTwoElementChartHTML(string chartType, string title, string label1, string label2, int data1, int data2, string legendPos)
+{
+	stringstream ss;
+	html_helpers::graphIdUniqueTag++;
+
+	ss <<	"<script type=\"text/javascript\">" << endl;
+
+			// Load the Visualization API and the piechart package.
+	ss <<	"google.load('visualization', '1.0', {'packages':['corechart']});" << endl;
+
+			// Set a callback to run when the Google Visualization API is loaded.
+	ss <<	"google.setOnLoadCallback(drawChart);" << endl;
+
+			// Callback that creates and populates a data table.
+	ss <<	"function drawChart() {" << endl;
+
+	ss <<		// Create the data table.
+	ss <<		"var data = new google.visualization.DataTable();" << endl;
+	ss <<		"data.addColumn('string', 'Data');" << endl;
+	ss <<		"data.addColumn('number', 'Quantity');" << endl;
+	ss <<		"data.addRows([";
+	ss <<		  "['" << label1 << "', " << data1 << "]," << endl;
+	ss <<		  "['" << label2 << "', " << data2 << "]," << endl;
+	ss <<		"]);" << endl;
+
+			// Set chart options
+	ss <<	"var options = {'title':'" << title << "'," << endl;
+	ss <<					"'width':400," << endl;
+	ss <<					"'height':250," << endl;
+	ss <<					"colors: ['#06a', '#39c']," << endl;
+	ss <<					"legend:{position:'" << legendPos << "'}" << endl;
+	ss <<					"};" << endl;
+
+			// Instantiate and draw our chart, passing in some options.
+	ss <<	"var chart = new google.visualization." << chartType << "Chart(document.getElementById('graph_" << html_helpers::graphIdUniqueTag << "'));" << endl;
+	ss <<	"chart.draw(data, options);" << endl;
+	ss <<	"}" << endl;
+	ss <<	"</script>" << endl;
+	ss <<	"<div id=\"graph_" << html_helpers::graphIdUniqueTag << "\"></div>" << endl;
+
+	return ss.str();
+}
+
+// Returns the URL to the server that is handling the DOM parsing of the href URL
+string html_helpers::getDomParserServerURL(string href)
+{
+	string get("http://atr.eng.utah.edu/~nathan/ps3/?url=");
+	get.append(href);
+
+	return get;
+}

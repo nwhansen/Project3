@@ -1,0 +1,63 @@
+#include "reviewer.h"
+
+reviewer::	reviewer(string id, int posts, int misspelled_word_count, int total_word_count, int total_helpful_count, int total_nonhelpful_count ){
+	this->id = id;
+	this->misspelled_word_count = misspelled_word_count;
+	this->posts = posts;
+	this->total_helpful_count = total_helpful_count;
+	this->total_nonhelpful_count = total_nonhelpful_count;
+	this->total_word_count = total_word_count;
+}
+
+reviewer::reviewer(){
+	reset();
+}
+
+reviewer::~reviewer(){
+}
+
+string reviewer::getID(){return this->id;}
+
+int reviewer::getMisspelledCount(){ return this->misspelled_word_count;}
+
+int reviewer::getPostCount(){return this->posts;}
+
+int reviewer::getTotalHelpfulCount(){return this->total_helpful_count;}
+
+int reviewer::getTotalNonHelpfulCount(){return this->total_nonhelpful_count;}
+
+int reviewer::getTotalWordCount(){return this->total_word_count;}
+
+void reviewer::update(int misspelled_word_count, int total_word_count, int total_helpful_count, int total_nonhelpful_count){
+	posts++;
+	this->misspelled_word_count += misspelled_word_count;
+	this->total_word_count += total_word_count;
+	this->total_helpful_count += total_helpful_count;
+	this->total_nonhelpful_count += total_nonhelpful_count;
+}
+
+void reviewer::update(int posts, int misspelled_word_count, int total_word_count, int total_helpful_count, int total_nonhelpful_count){
+	this->posts += posts;
+	this->misspelled_word_count += misspelled_word_count;
+	this->total_word_count += total_word_count;
+	this->total_helpful_count += total_helpful_count;
+	this->total_nonhelpful_count += total_nonhelpful_count;
+}
+
+void reviewer::update(reviewer * second_review ){
+	this->posts += second_review->getPostCount();
+	this->misspelled_word_count += second_review->getMisspelledCount();
+	this->total_word_count += second_review->getTotalWordCount();
+	this->total_helpful_count += second_review->getTotalHelpfulCount();
+	this->total_nonhelpful_count += second_review->getTotalNonHelpfulCount();
+}
+
+void reviewer::reset()
+{
+	id = "";
+	posts = 0;
+	misspelled_word_count = 0;
+	total_helpful_count = 0;
+	total_nonhelpful_count = 0;
+	total_word_count = 0;
+}

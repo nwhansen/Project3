@@ -1,0 +1,65 @@
+/*
+ * Created for CS 3505 Spring 2012
+ * Written by: Nate Anderson, Cody Foltz, Nathan Hansen, Eric Olson
+ * 
+ * Class for retrieving, parsing and gathering statistics from a URL.
+ * Will collect a list of links found and spell check the current page as
+ * well as optionally get additional statistics (TBD).
+ */
+
+#ifndef PAGE_HANDLER_H
+#define PAGE_HANDLER_H
+
+#include <vector>
+#include <sstream>
+
+#include "dictionary.h"
+#include "page_stats.h"
+#include "reviewer.h"
+//#include "commenter.h"
+#include "page_handler_args.h"
+#include "curl\curl.h"
+#include "cJSON.h"
+
+using namespace std;
+
+class page_handler {
+public:
+
+	// Constructor which is given a crawler callback to invoke when complete
+	page_handler(void *obj, dictionary *theDictionary, page_handler_args * (*crawlerCallback)(void * obj, page_handler* thePageHandler));
+
+	// Default destructor
+	~page_handler();
+
+	// Starts this page handler which will ask the crawler for a link to process,
+	// process that link, return its results to the crawler and ask for another link.
+	void start(page_handler_args *args);
+
+	page_handler_args * getArgs();
+
+private:
+
+	// The dictionary associated with this page handler
+	// Used when analyzing misspelled words
+	dictionary *myDictionary;
+
+	page_handler_args *myArgs;
+
+	void* callee;
+
+	page_handler_args * (*myCrawlerCallback)(void *obj, page_handler* thePageHandler);
+
+	void process();
+
+	static size_t write_data(char *ptr, size_t size, size_t nmemb, void *userdata) {
+		std::ostringstream *stream = (std::ostringstream*)userdata;
+		size_t count = size * nmemb;
+		stream->write(ptr, count);
+		return count;
+	}
+
+	static int getMisspelledWordsCount(vector<string> *words, dictionary *theDictionary);
+};
+
+#endif
